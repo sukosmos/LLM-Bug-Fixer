@@ -1,0 +1,6 @@
+vllm
+pytest
+requests
+numpy
+pandas
+logging
