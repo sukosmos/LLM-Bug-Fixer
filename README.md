@@ -1,50 +1,95 @@
-# Bug Fixing Pipeline
+# LLM Bug Fixer
+
+Automated bug fixing pipeline using Large Language Models (LLM).
 
 ## Overview
-The Bug Fixing Pipeline is a Python project designed to automate the process of identifying and fixing bugs in code files using a combination of fault localization and code generation techniques powered by a language model (LLM). This project aims to streamline the debugging process, making it more efficient and effective.
+
+This pipeline automatically:
+1. **Localizes faults** in Java code using LLM
+2. **Generates fixes** for identified bugs
+3. **Validates fixes** through compilation and testing
+
+## Features
+
+- 🔍 **Fault Localization**: LLM analyzes code to identify bugs
+- 🔧 **Automated Fixing**: Generates corrected code
+- ✅ **Test Validation**: Compiles and runs tests on fixes
+- 📊 **Token Tracking**: Monitors LLM token usage
+- 📝 **Detailed Logging**: Saves all results in JSON format
 
 ## Project Structure
+
 ```
-bug-fixing-pipeline/
+llm_bug_fixer/
+├── main.py                 # Main pipeline execution
+├── config.py              # Configuration settings
+├── llm_client.py          # vLLM client wrapper
 ├── src/
-│   ├── __init__.py          # Initializes the src package
-│   ├── find_file.py         # Scans for buggy files
-│   ├── find_FL.py           # Localizes faults in buggy code
-│   ├── fix_code.py          # Generates code fixes
-│   └── test_fix.py          # Runs test cases
-├── mcp_client.py            # Main client to orchestrate the pipeline
-├── llm_client.py            # Handles interaction with the LLM
-├── requirements.txt         # Lists project dependencies
-├── config.py                # Configuration settings
-└── README.md                # Project documentation
+│   ├── file_utils.py      # File I/O utilities
+│   ├── find_FL.py         # Fault localization
+│   ├── fix_code.py        # Code fixing
+│   └── test_fix.py        # Test execution
+├── data/
+│   ├── target/            # Buggy Java files
+│   └── test/              # JUnit test files
+└── output/
+    ├── fixes/             # Fixed code + JSON results
+    └── logs/              # Execution logs
 ```
 
 ## Installation
-To set up the project, clone the repository and install the required dependencies:
 
 ```bash
-git clone <repository-url>
-cd bug-fixing-pipeline
-pip install -r requirements.txt
+# Create virtual environment
+python -m venv vllm_env
+source vllm_env/bin/activate
+
+# Install dependencies
+pip install vllm torch transformers
 ```
 
 ## Usage
-1. **Finding Buggy Files**: The pipeline starts by scanning a specified directory for files that contain known bug patterns. This is done using the `find_buggy_files` function in `src/find_file.py`.
 
-2. **Fault Localization**: Once buggy files are identified, the `FaultLocalizer` class in `src/find_FL.py` is used to analyze the code and pinpoint potential fault locations.
+```bash
+# Place buggy Java files in data/target/
+# Place corresponding test files in data/test/
 
-3. **Generating Fixes**: The identified faults are then passed to the `CodeFixer` class in `src/fix_code.py`, which generates code fixes using the LLM.
-
-4. **Running Tests**: Finally, the `run_tests` function in `src/test_fix.py` executes the relevant test cases to verify that the fixes work as intended.
+# Run the pipeline
+python main.py
+```
 
 ## Configuration
-Configuration settings such as input and output paths, model parameters, and logging settings can be adjusted in `config.py`.
 
-## Dependencies
-The project relies on several libraries for LLM interaction, file handling, and testing. These are listed in `requirements.txt`.
+Edit `config.py` to customize:
+- Model name (default: EXAONE-3.0-7.8B-Instruct)
+- Temperature, max tokens
+- Input/output directories
 
-## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+## Output
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
+Each processed file produces:
+- `output/fixes/{filename}.java` - Fixed code
+- `output/fixes/{filename}.java.json` - Complete results:
+  - Fault localization findings
+  - Token usage (FL + Fix)
+  - Test results
+
+## Example Output JSON
+
+```json
+{
+  "file": "Calculator.java",
+  "fl": {
+    "faults": ["Line 5: Method returns wrong value"],
+    "token_usage": {"prompt_tokens": 150, "completion_tokens": 80}
+  },
+  "fix": {
+    "fixed_file": "output/fixes/Calculator.java",
+    "token_usage": {"prompt_tokens": 200, "completion_tokens": 150}
+  },
+  "test": {
+    "compiled": true,
+    "passed": 4,
+    "failed": 1
+  }
+}
