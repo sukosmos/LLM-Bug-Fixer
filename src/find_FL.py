@@ -1,41 +1,57 @@
+from src.file_utils import read_file
+
 class FaultLocalizer:
-    def __init__(self, model_client):
-        self.model_client = model_client
+    def __init__(self, llm_client):
+        self.llm_client = llm_client
 
-    def localize_faults(self, buggy_code):
+    def localize_faults(self, file_path):
         """
-        Analyze the buggy code using the LLM to identify potential fault locations.
+        Analyze a file to localize potential faults using LLM.
+        """
+        code = read_file(file_path)
+        if code is None:
+            return {'faults': [], 'tokens': {}}
         
-        Parameters:
-        buggy_code (str): The code that contains potential bugs.
+        # 개선된 프롬프트
+        prompt = f"""Analyze the following Java code and identify potential bugs.
 
-        Returns:
-        list: A list of identified fault locations.
-        """
-        # Prepare the request for the LLM
-        request = {
-            "prompt": f"Identify potential faults in the following code:\n{buggy_code}",
-            "max_tokens": 150
-        }
-        
-        # Call the LLM to analyze the code
-        response = self.model_client.call_llm(request)
-        
-        # Process the response to extract fault locations
-        fault_locations = self.extract_fault_locations(response)
-        
-        return fault_locations
+Code:
+{code}
 
-    def extract_fault_locations(self, response):
-        """
-        Extract fault locations from the LLM response.
-        
-        Parameters:
-        response (str): The response from the LLM.
+Instructions:
+- List each fault on a new line
+- Format: "Line X: [brief description]"
+- Focus on logical errors, missing returns, type mismatches, etc.
+- Do NOT use markdown formatting
+- Example format:
+  Line 5: Method returns wrong value
+  Line 12: Missing return statement
 
-        Returns:
-        list: A list of fault locations extracted from the response.
-        """
-        # This is a placeholder for actual extraction logic
-        # In a real implementation, you would parse the response to find fault locations
-        return response.splitlines()  # Example of splitting response into lines
+Faults:
+"""
+        
+        try:
+            response = self.llm_client(prompt)
+            faults = self._parse_fault_response(response['text'])
+            
+            fl_result = {
+                'faults': faults,
+                'tokens': response
+            }
+            
+            return fl_result
+        except Exception as e:
+            print(f"Error calling LLM for fault localization: {e}")
+            return {'faults': [], 'tokens': {}}
+    
+    def _parse_fault_response(self, response):
+        faults = []
+        lines = response.split('\n')
+        for line in lines:
+            line = line.strip()
+            # "Line X:" 형식 찾기
+            if line.startswith('Line') and ':' in line:
+                faults.append(line)
+        
+        # 아무것도 못 찾으면 전체 응답 반환
+        return faults if faults else [response.strip()]
